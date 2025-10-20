@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cytra's Movie Hub</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f0f0f0; margin: 0; padding: 0; }
+        header { background-color: #222; color: white; padding: 1rem; text-align: center; }
+        main { padding: 1rem; }
+        input[type=text] { width: 70%; padding: 0.5rem; }
+        button { padding: 0.5rem 1rem; margin-left: 0.5rem; cursor: pointer; }
+        .movie { background: white; padding: 1rem; margin: 1rem 0; border-radius: 10px; display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-start; }
+        .movie img { width: 150px; border-radius: 5px; object-fit: cover; }
+        .movie-info { flex: 1; }
+        .movie-info button { margin-top: 0.5rem; margin-right: 0.5rem; }
+        footer { text-align: center; padding: 1rem; background: #222; color: white; margin-top: 2rem; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Cytra's Movie Hub</h1>
+</header>
+
+<main>
+    <input type="text" id="searchInput" placeholder="Search for a movie...">
+    <button onclick="searchMovies()">Search</button>
+
+    <div id="results"></div>
+</main>
+
+<footer>
+    Made with ❤️ | Credit: Cytra
+</footer>
+
+<script>
+async function searchMovies() {
+    const query = document.getElementById('searchInput').value.trim();
+    const resultsDiv = document.getElementById('results');
+    resultsDiv.innerHTML = '<p>Loading...</p>';
+
+    if (!query) {
+        resultsDiv.innerHTML = '<p>Please enter a movie name.</p>';
+        return;
+    }
+
+    let movies = [];
+
+    // Gifted Movies API
+    try {
+        const giftedResponse = await fetch(`https://movieapi.giftedtech.co.ke/api/search/${encodeURIComponent(query)}`);
+        const giftedData = await giftedResponse.json();
+
+        if (Array.isArray(giftedData) && giftedData.length > 0) {
+            movies = giftedData.map(movie => ({
+                title: movie.title || 'No Title',
+                cover: movie.coverImage || movie.cover || 'default.jpg',
+                year: movie.releaseDate || movie.year || 'N/A',
+                genre: movie.genre || 'N/A',
+                description: movie.description || movie.plot || 'No description available.',
+                watchLink: movie.watchLink || '#',
+                downloadLink: movie.download || '#'
+            }));
+        }
+    } catch (err) {
+        console.warn('Gifted API error', err);
+    }
+
+    // OMDb API fallback for metadata
+    if (movies.length === 0) {
+        try {
+            const omdbApiKey = '9694222f'; // Replace with your OMDb key
+            const omdbResponse = await fetch(`https://www.omdbapi.com/?apikey=${omdbApiKey}&s=${encodeURIComponent(query)}`);
+            const omdbData = await omdbResponse.json();
+
+            if (omdbData.Response !== 'False' && Array.isArray(omdbData.Search)) {
+                const omdbMovies = omdbData.Search.map(movie => ({
+                    title: movie.Title || 'No Title',
+                    cover: movie.Poster !== 'N/A' ? movie.Poster : 'default.jpg',
+                    year: movie.Year || 'N/A',
+                    genre: movie.Type || 'N/A',
+                    description: 'No description available.',
+                    watchLink: '#',
+                    downloadLink: '#'
+                }));
+                movies = movies.concat(omdbMovies);
+            }
+        } catch (err) {
+            console.error('OMDb API error', err);
+        }
+    }
+
+    // Display movies
+    if (movies.length === 0) {
+        resultsDiv.innerHTML = '<p>No movies found.</p>';
+        return;
+    }
+
+    resultsDiv.innerHTML = '';
+    movies.forEach(movie => {
+        const movieDiv = document.createElement('div');
+        movieDiv.className = 'movie';
+        movieDiv.innerHTML = `
+            <img src="${movie.cover}" alt="${movie.title}">
+            <div class="movie-info">
+                <h2>${movie.title}</h2>
+                <p><strong>Year:</strong> ${movie.year}</p>
+                <p><strong>Genre / Type:</strong> ${movie.genre}</p>
+                <p>${movie.description}</p>
+                <a href="${movie.watchLink}" target="_blank"><button>Watch</button></a>
+                <a href="${movie.downloadLink}" download><button>Download</button></a>
+            </div>
+        `;
+        resultsDiv.appendChild(movieDiv);
+    });
+}
+</script>
+
+</body>
+</html>
